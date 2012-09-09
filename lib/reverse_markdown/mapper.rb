@@ -72,7 +72,8 @@ module ReverseMarkdown
           "> "
         when :code
           if parent == :pre
-            self.github_style_code_blocks ? "\n```\n" : "\n    "
+            language = parent["data-language"]
+            self.github_style_code_blocks ? "\n~~~ #{language ? language : ""}\n" : "\n    "
           else
             " `"
           end
