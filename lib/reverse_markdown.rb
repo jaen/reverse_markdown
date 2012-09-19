@@ -11,6 +11,7 @@ module ReverseMarkdown
       when Nokogiri::XML::Document then input.root
       when Nokogiri::XML::Node     then input
     end
+    # binding.pry
     ReverseMarkdown::Mapper.new(opts).process_element(root)
   end
 

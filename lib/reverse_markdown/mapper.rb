@@ -4,12 +4,16 @@ module ReverseMarkdown
     attr_accessor :log_enabled, :log_level
     attr_accessor :li_counter
     attr_accessor :github_style_code_blocks
+    attr_accessor :theaders
+    attr_accessor :taligns
 
     def initialize(opts={})
       self.log_level   = :info
       self.log_enabled = true
       self.li_counter  = 0
       self.github_style_code_blocks = opts[:github_style_code_blocks] || false
+      self.taligns = []
+      self.theaders = 0      
     end
 
     def process_element(element)
@@ -34,19 +38,45 @@ module ReverseMarkdown
         when :html, :body
           ""
         when :li
-          indent = '  ' * [(element.ancestors('ol').count + element.ancestors('ul').count - 1), 0].max
+          indent = '    ' * [(element.ancestors('ol').count + element.ancestors('ul').count) - 1, 0].max
           if parent == :ol
             "#{indent}#{self.li_counter += 1}. "
           else
             "#{indent}- "
           end
+        when :thead # && 
+          # binding.pry
+          if parent == :table
+            self.taligns = []
+            self.theaders = 0
+            '| '
+          else
+            ''
+          end
+        # when :tr
+        #   self.trow = []
+        # when :td, :th
+        #   if self.trow == []
+        #     trow << element.name.to_sym << sel
+        when :tr
+          if parent == :thead
+            if (self.theaders += 1) > 1
+              handle_error "malformed table header"
+            end
+            ''
+          elsif parent == :tbody
+            '| '
+          end
+        when :th
+          self.taligns << (element['align'] || :left).to_sym
+          ''
         when :pre
-          "\n"
+          "\r\n"
         when :ol
           self.li_counter = 0
-          "\n"
+          "\r\n"
         when :ul, :root#, :p
-          "\n"
+          "\r\n"
         when :p
           if element.ancestors.map(&:name).include?('blockquote')
             "\n\n> "
@@ -59,7 +89,7 @@ module ReverseMarkdown
             end
             is_first ? "" : "\n\n"
           else
-            "\n\n"
+            "\r\n"
           end
         when :h1, :h2, :h3, :h4 # /h(\d)/ for 1.9
           element.name =~ /h(\d)/
@@ -92,19 +122,40 @@ module ReverseMarkdown
     def ending(element)
       parent = element.parent ? element.parent.name.to_sym : nil
       case element.name.to_sym
-        when :html, :body, :pre, :hr, :p
+        when :html, :body, :pre, :hr #, :p
           ""
-        when :h1, :h2, :h3, :h4 # /h(\d)/ for 1.9
+        when :th, :td
+          ' |'
+        when :tr
           "\n"
+        when :thead
+          if parent == :table
+            (['|'].concat(self.taligns.map do |align|
+              case align
+                when :left
+                  '---|'
+                when :center
+                  ':-:|'
+                when :right
+                  '--:|'
+              end
+            end) << "\n").join('')
+          else
+            ''
+          end
+        when :h1, :h2, :h3, :h4 # /h(\d)/ for 1.9
+          "\r\n"
         when :em
           '*'
         when :strong
           '**'
-        when :li, :blockquote, :root, :ol, :ul
-          "\n"
+        when :p
+          "\r\n"
+        when:li, :blockquote, :root, :ol, :ul
+          "\r\n"
         when :code
           if parent == :pre
-            self.github_style_code_blocks ? "\n```" : "\n"
+            self.github_style_code_blocks ? "\n```" : "\r\n"
           else
            '` '
           end
@@ -112,7 +163,7 @@ module ReverseMarkdown
           "](#{element.attribute('href').to_s}) "
         when :img
           if element.has_attribute?('alt')
-            "#{element.attribute('alt')}][#{element.attribute('src')}] "
+            "#{element.attribute('alt')}](#{element.attribute('src')}) "
           else
             "#{element.attribute('src')}] "
           end
