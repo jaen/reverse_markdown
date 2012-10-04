@@ -44,6 +44,8 @@ module ReverseMarkdown
           else
             "#{indent}- "
           end
+        when :table
+          "\n\n"
         when :thead # && 
           # binding.pry
           if parent == :table
@@ -128,6 +130,8 @@ module ReverseMarkdown
           ' |'
         when :tr
           "\n"
+        when :table
+          "\n"          
         when :thead
           if parent == :table
             (['|'].concat(self.taligns.map do |align|
