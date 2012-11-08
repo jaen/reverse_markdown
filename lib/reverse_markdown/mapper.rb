@@ -110,7 +110,7 @@ module ReverseMarkdown
             " `"
           end
         when :a
-          "["
+          " ["
         when :img
           "!["
         when :hr
