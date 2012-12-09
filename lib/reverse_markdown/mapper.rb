@@ -6,6 +6,7 @@ module ReverseMarkdown
     attr_accessor :github_style_code_blocks
     attr_accessor :theaders
     attr_accessor :taligns
+    attr_accessor :new_table
 
     def initialize(opts={})
       self.log_level   = :info
@@ -13,7 +14,8 @@ module ReverseMarkdown
       self.li_counter  = 0
       self.github_style_code_blocks = opts[:github_style_code_blocks] || false
       self.taligns = []
-      self.theaders = 0      
+      self.theaders = 0
+      self.new_table = :no # :yes, :no, :thead
     end
 
     def process_element(element)
@@ -45,9 +47,11 @@ module ReverseMarkdown
             "#{indent}- "
           end
         when :table
+          self.new_table = :yes
           "\n\n"
         when :thead # && 
-          # binding.pry
+          # puts "thead"
+          self.new_table = :thead
           if parent == :table
             self.taligns = []
             self.theaders = 0
@@ -55,6 +59,10 @@ module ReverseMarkdown
           else
             ''
           end
+        when :tbody
+          # puts "tbody"
+          self.new_table = :yes unless self.new_table == :thead
+          ''
         # when :tr
         #   self.trow = []
         # when :td, :th
@@ -67,7 +75,22 @@ module ReverseMarkdown
             end
             ''
           elsif parent == :tbody
-            '| '
+            #binding.pry
+            str = ''
+            if self.theaders == 0 && self.new_table == :yes then
+              self.new_table = :no
+              children = element.children.select { |el| ['td','th'].include? el.name }
+              fill = lambda do |with|
+                children.flat_map do |el|
+                  cs = el['colspan']
+                  [with] * ((cs && cs.to_i) || 1)
+                end
+              end
+              str  = "|#{fill.call('   ').join('|')}|\n"
+              str += "|#{fill.call('---').join('|')}|\n"
+            end
+            # binding.pry
+            str += '| '
           end
         when :th
           self.taligns << (element['align'] || :left).to_sym
